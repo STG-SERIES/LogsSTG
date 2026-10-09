@@ -50,6 +50,8 @@ history: 1000
 ```
 ### ⚠️ Warning! If you want the logs to be accesible from other devices of your local network, you need to set the `host:` to `0.0.0.0`
 
+### ⚠️ Warning! If you want the logs to be accesible from other devices of your local network, you need to set the `host:` to `0.0.0.0`
+
 | Key | Default | Meaning |
 |-----|---------|---------|
 | `host` | `127.0.0.1` | Address the page binds to |
