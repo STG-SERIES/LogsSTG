@@ -1,0 +1,5 @@
+# Loopback only. Anyone who can open this port can run console commands.
+host: 127.0.0.1
+port: 8765
+# Lines kept for a viewer that connects after they were printed.
+history: 1000

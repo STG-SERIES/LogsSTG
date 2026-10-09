@@ -1,0 +1,7 @@
+name: LogsSTG
+version: 1.0.0
+main: stg.logs.LogsPlugin
+api-version: '26.1'
+load: STARTUP
+description: Local live console log and command input
+author: Kostas
