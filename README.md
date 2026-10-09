@@ -32,6 +32,7 @@ port: 8765
 # Lines kept for a viewer that connects after they were printed.
 history: 1000
 ```
+⚠️ ### Warning! If you want the logs to be accesible from other devices of your local network, you need to set the `host:` to `0.0.0.0`
 
 | Key | Default | Meaning |
 |-----|---------|---------|
