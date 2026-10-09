@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>logs</title>
+<style>
+:root { color-scheme: dark; }
+html, body { margin: 0; height: 100%; background: #000; color: #ddd; }
+body { display: flex; flex-direction: column; font: 13px/1.35 ui-monospace, Consolas, monospace; }
+#out { flex: 1; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; padding: 8px 10px; margin: 0; }
+form { display: flex; }
+input { flex: 1; background: #000; color: #ddd; border: 0; border-top: 1px solid #222; font: inherit; padding: 8px 10px; outline: none; }
+</style>
+</head>
+<body>
+<pre id="out"></pre>
+<form id="cmd">
+<input id="in" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus>
+</form>
+<script>
+const out = document.getElementById("out");
+const input = document.getElementById("in");
+const hist = [];
+const MAX = 1500;
+let stick = true;
+let hi = 0;
+
+function push(text) {
+  for (const part of String(text).split("\n")) {
+    out.appendChild(document.createTextNode(part + "\n"));
+  }
+  while (out.childNodes.length > MAX) out.removeChild(out.firstChild);
+  if (stick) out.scrollTop = out.scrollHeight;
+}
+
+out.addEventListener("scroll", () => {
+  stick = out.scrollHeight - out.scrollTop - out.clientHeight < 24;
+});
+
+const es = new EventSource("/logs");
+es.addEventListener("reset", () => {
+  out.textContent = "";
+});
+es.onmessage = (e) => push(e.data);
+
+input.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowUp") {
+    if (hi > 0) {
+      hi--;
+      input.value = hist[hi];
+    }
+    e.preventDefault();
+  } else if (e.key === "ArrowDown") {
+    if (hi < hist.length) hi++;
+    input.value = hi >= hist.length ? "" : hist[hi];
+    e.preventDefault();
+  }
+});
+
+document.getElementById("cmd").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const command = input.value;
+  if (!command.trim()) return;
+  input.value = "";
+  hist.push(command);
+  hi = hist.length;
+  try {
+    const res = await fetch("/command", {
+      method: "POST",
+      body: command,
+      headers: { "Content-Type": "text/plain;charset=utf-8" }
+    });
+    if (!res.ok) push("! rejected (" + res.status + ")");
+  } catch (err) {
+    push("! rejected");
+  }
+});
+</script>
+</body>
+</html>
