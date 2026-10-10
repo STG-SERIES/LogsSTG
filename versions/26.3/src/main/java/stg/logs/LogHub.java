@@ -7,13 +7,22 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 final class LogHub {
-    private final int capacity;
+    private int capacity;
     private final ArrayDeque<String> history = new ArrayDeque<>();
     private final Set<Subscriber> subscribers = ConcurrentHashMap.newKeySet();
     private final Object lock = new Object();
 
     LogHub(int capacity) {
         this.capacity = capacity;
+    }
+
+    void setCapacity(int capacity) {
+        synchronized (lock) {
+            this.capacity = capacity;
+            while (history.size() > this.capacity) {
+                history.removeFirst();
+            }
+        }
     }
 
     void publish(String line) {

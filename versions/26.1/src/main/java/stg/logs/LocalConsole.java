@@ -27,29 +27,33 @@ final class LocalConsole {
     private final LogsPlugin plugin;
     private final LogHub hub;
     private final byte[] page;
+    private final byte[] theme;
     private final ServerSocket server;
     private final AtomicBoolean open = new AtomicBoolean(true);
     private final Set<Socket> sockets = ConcurrentHashMap.newKeySet();
     private final Set<Viewer> viewers = ConcurrentHashMap.newKeySet();
     private final Thread acceptor;
 
-    private LocalConsole(LogsPlugin plugin, LogHub hub, byte[] page, ServerSocket server) {
+    private LocalConsole(LogsPlugin plugin, LogHub hub, byte[] page, byte[] theme, ServerSocket server) {
         this.plugin = plugin;
         this.hub = hub;
         this.page = page;
+        this.theme = theme;
         this.server = server;
         this.acceptor = new Thread(this::acceptLoop, "logsstg-accept");
         this.acceptor.setDaemon(true);
     }
 
-    static LocalConsole start(LogsPlugin plugin, LogHub hub, String host, int port) throws IOException {
-        byte[] page;
+    static LocalConsole start(LogsPlugin plugin, LogHub hub, String host, int port, PageColors colors) throws IOException {
+        byte[] template;
         try (InputStream in = plugin.getResource("page.html")) {
             if (in == null) {
                 throw new IOException("page.html is missing from the jar");
             }
-            page = in.readAllBytes();
+            template = in.readAllBytes();
         }
+        byte[] page = colors.render(template);
+        byte[] theme = colors.event();
         ServerSocket server = new ServerSocket();
         try {
             server.setReuseAddress(true);
@@ -58,7 +62,7 @@ final class LocalConsole {
             server.close();
             throw e;
         }
-        LocalConsole console = new LocalConsole(plugin, hub, page, server);
+        LocalConsole console = new LocalConsole(plugin, hub, page, theme, server);
         console.acceptor.start();
         return console;
     }
@@ -167,6 +171,7 @@ final class LocalConsole {
                             + "\r\n"
             ).getBytes(StandardCharsets.US_ASCII));
             Chunked chunked = new Chunked(out);
+            chunked.write(theme);
             chunked.write(RESET);
             for (String line : history) {
                 chunked.write(eventBytes(line));

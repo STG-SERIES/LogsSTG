@@ -5,3 +5,12 @@ api-version: '26.2'
 load: STARTUP
 description: Local live console log and command input
 author: Kostas
+commands:
+  logsstg:
+    description: Reload the log page
+    usage: /logsstg restart
+    permission: logsstg.restart
+permissions:
+  logsstg.restart:
+    description: Reload LogsSTG colors and the local log port
+    default: op

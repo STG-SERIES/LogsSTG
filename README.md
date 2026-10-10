@@ -59,6 +59,10 @@ history: 1000
 
 Leave `host` on `127.0.0.1`. Binding any other address lets anyone who can reach that port run commands as the console.
 
+`INFO`, `WARN`, and `ERROR` lines use `colors` in that same file. `colors.background` is the page background. `colors.text` is everything else, including the command line. `#RGB` and `#RRGGBB` both work.
+
+After editing the file, run `/logsstg restart`. That reloads the page without restarting the server. Operators have `logsstg.restart` by default.
+
 ## Build
 
 Java 25+ is required to build every module at once. Java 21 is enough for `versions/1.21.11` alone.

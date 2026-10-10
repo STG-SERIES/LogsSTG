@@ -2,58 +2,186 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>logs</title>
 <style>
-:root { color-scheme: dark; }
-html, body { margin: 0; height: 100%; background: #000; color: #ddd; }
-body { display: flex; flex-direction: column; font: 13px/1.35 ui-monospace, Consolas, monospace; }
-#out { flex: 1; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; padding: 8px 10px; margin: 0; }
-form { display: flex; }
-input { flex: 1; background: #000; color: #ddd; border: 0; border-top: 1px solid #222; font: inherit; padding: 8px 10px; outline: none; }
+:root {
+  color-scheme: dark;
+  --bg: __BG__;
+  --text: __TEXT__;
+  --info: __INFO__;
+  --warn: __WARN__;
+  --error: __ERROR__;
+}
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); }
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  height: 100dvh;
+  box-sizing: border-box;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  font: 14px/1.4 ui-monospace, Consolas, monospace;
+  touch-action: manipulation;
+}
+#out {
+  flex: 1;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: 10px 12px;
+  margin: 0;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+#out div { min-height: 1.4em; }
+#out .info { color: var(--info); }
+#out .warn { color: var(--warn); }
+#out .error { color: var(--error); }
+form { display: flex; flex: 0 0 auto; }
+input {
+  flex: 1;
+  width: 100%;
+  min-height: 48px;
+  background: var(--bg);
+  color: var(--text);
+  border: 0;
+  border-top: 1px solid color-mix(in srgb, var(--text) 28%, transparent);
+  font: inherit;
+  font-size: 16px;
+  padding: 12px;
+  outline: none;
+  border-radius: 0;
+}
 </style>
 </head>
 <body>
 <pre id="out"></pre>
 <form id="cmd">
-<input id="in" autocomplete="off" autocapitalize="off" spellcheck="false" autofocus>
+<input id="in" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="send" autofocus>
 </form>
 <script>
 const out = document.getElementById("out");
 const input = document.getElementById("in");
 const hist = [];
 const MAX = 1500;
+const LEVEL = /\[(?:[^\]]*[\/\s])(INFO|WARN|ERROR)\]/;
 let stick = true;
 let hi = 0;
 
+function applyTheme(theme) {
+  const root = document.documentElement;
+  root.style.setProperty("--info", theme.info);
+  root.style.setProperty("--warn", theme.warn);
+  root.style.setProperty("--error", theme.error);
+  root.style.setProperty("--text", theme.text);
+  root.style.setProperty("--bg", theme.background);
+  const hex = String(theme.background).replace("#", "");
+  const full = hex.length === 3 ? hex.replace(/./g, (c) => c + c) : hex;
+  const red = parseInt(full.slice(0, 2), 16);
+  const green = parseInt(full.slice(2, 4), 16);
+  const blue = parseInt(full.slice(4, 6), 16);
+  const light = (red * 299 + green * 587 + blue * 114) / 1000 > 150;
+  root.style.colorScheme = light ? "light" : "dark";
+}
+
 function push(text) {
-  for (const part of String(text).split("\n")) {
-    out.appendChild(document.createTextNode(part + "\n"));
+  const parts = String(text).split("\n");
+  const found = parts[0] ? parts[0].match(LEVEL) : null;
+  const level = found ? found[1].toLowerCase() : "";
+  for (const part of parts) {
+    const line = document.createElement("div");
+    if (level) line.className = level;
+    line.textContent = part.length ? part : " ";
+    out.appendChild(line);
   }
   while (out.childNodes.length > MAX) out.removeChild(out.firstChild);
   if (stick) out.scrollTop = out.scrollHeight;
+}
+
+function recall(key) {
+  if (key === "ArrowUp") {
+    if (hi > 0) {
+      hi--;
+      input.value = hist[hi];
+    }
+  } else if (key === "ArrowDown") {
+    if (hi < hist.length) hi++;
+    input.value = hi >= hist.length ? "" : hist[hi];
+  }
+}
+
+function focusInput() {
+  input.focus({ preventScroll: true });
 }
 
 out.addEventListener("scroll", () => {
   stick = out.scrollHeight - out.scrollTop - out.clientHeight < 24;
 });
 
+let moved = false;
+let startY = 0;
+out.addEventListener("pointerdown", (e) => {
+  moved = false;
+  startY = e.clientY;
+});
+out.addEventListener("pointermove", (e) => {
+  if (Math.abs(e.clientY - startY) > 10) moved = true;
+});
+out.addEventListener("pointerup", () => {
+  const selected = window.getSelection();
+  if (!moved && (!selected || selected.isCollapsed)) focusInput();
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.ctrlKey || e.metaKey || e.altKey || document.activeElement === input) return;
+  if (e.key === "ArrowUp" || e.key === "ArrowDown") {
+    e.preventDefault();
+    focusInput();
+    recall(e.key);
+    return;
+  }
+  if (e.key === "Enter") {
+    e.preventDefault();
+    focusInput();
+    input.form.requestSubmit();
+    return;
+  }
+  if (e.key === "Backspace") {
+    e.preventDefault();
+    focusInput();
+    input.value = input.value.slice(0, -1);
+    return;
+  }
+  if (e.key.length === 1) {
+    e.preventDefault();
+    focusInput();
+    input.value += e.key;
+  }
+});
+
+if (window.visualViewport) {
+  const fit = () => {
+    document.body.style.height = Math.round(window.visualViewport.height) + "px";
+    if (stick) out.scrollTop = out.scrollHeight;
+  };
+  window.visualViewport.addEventListener("resize", fit);
+  window.visualViewport.addEventListener("scroll", fit);
+}
+
 const es = new EventSource("/logs");
+es.addEventListener("theme", (e) => {
+  try { applyTheme(JSON.parse(e.data)); } catch (err) {}
+});
 es.addEventListener("reset", () => {
   out.textContent = "";
 });
 es.onmessage = (e) => push(e.data);
 
 input.addEventListener("keydown", (e) => {
-  if (e.key === "ArrowUp") {
-    if (hi > 0) {
-      hi--;
-      input.value = hist[hi];
-    }
+  if (e.key === "ArrowUp" || e.key === "ArrowDown") {
     e.preventDefault();
-  } else if (e.key === "ArrowDown") {
-    if (hi < hist.length) hi++;
-    input.value = hi >= hist.length ? "" : hist[hi];
-    e.preventDefault();
+    recall(e.key);
   }
 });
 
@@ -74,6 +202,7 @@ document.getElementById("cmd").addEventListener("submit", async (e) => {
   } catch (err) {
     push("! rejected");
   }
+  focusInput();
 });
 </script>
 </body>

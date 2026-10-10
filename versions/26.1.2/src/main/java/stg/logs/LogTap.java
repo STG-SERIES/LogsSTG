@@ -17,18 +17,13 @@ final class LogTap extends AbstractAppender {
     private static final int MAX_CHARS = 16_000;
     private static final Pattern ANSI = Pattern.compile("\u001B\\[[0-?]*[ -/]*[@-~]");
 
+    private static final PatternLayout PREFIXED = layout("[%d{HH:mm:ss} %level]: [%logger] %msg{nolookups}%n%xEx{full}");
+    private static final PatternLayout PLAIN = layout("[%d{HH:mm:ss} %level]: %msg{nolookups}%n%xEx{full}");
+
     private final LogHub hub;
 
     private LogTap(LogHub hub) {
-        super(
-                NAME,
-                null,
-                PatternLayout.newBuilder()
-                        .withPattern("[%d{HH:mm:ss}] [%t/%level]: %msg%xThrowable")
-                        .withCharset(StandardCharsets.UTF_8)
-                        .build(),
-                false,
-                Property.EMPTY_ARRAY);
+        super(NAME, null, PREFIXED, false, Property.EMPTY_ARRAY);
         this.hub = hub;
     }
 
@@ -58,7 +53,8 @@ final class LogTap extends AbstractAppender {
         if (!isStarted() || event == null) {
             return;
         }
-        Object rendered = getLayout().toSerializable(event);
+        PatternLayout layout = prefix(event.getLoggerName()) ? PREFIXED : PLAIN;
+        Object rendered = layout.toSerializable(event);
         if (rendered == null) {
             return;
         }
@@ -77,6 +73,32 @@ final class LogTap extends AbstractAppender {
             text = text.substring(0, end);
         }
         hub.publish(text);
+    }
+
+    private static PatternLayout layout(String pattern) {
+        return PatternLayout.newBuilder()
+                .withPattern(pattern)
+                .withCharset(StandardCharsets.UTF_8)
+                .build();
+    }
+
+    /**
+     * Same names Paper's console leaves unprefixed: root, Minecraft, Mojang, and a few plugins
+     * that log without their own name.
+     */
+    private static boolean prefix(String loggerName) {
+        if (loggerName == null || loggerName.isEmpty()) {
+            return false;
+        }
+        if (loggerName.equals("Minecraft")
+                || loggerName.startsWith("Minecraft.")
+                || loggerName.startsWith("net.minecraft.")
+                || loggerName.startsWith("com.mojang.")
+                || loggerName.startsWith("com.sk89q.")
+                || loggerName.startsWith("ru.tehkode.")) {
+            return false;
+        }
+        return true;
     }
 
     private static String stripSection(String text) {

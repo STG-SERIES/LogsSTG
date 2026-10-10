@@ -3,3 +3,13 @@ host: 127.0.0.1
 port: 8765
 # Lines kept for a viewer that connects after they were printed.
 history: 1000
+
+# Hex colors. #RGB and #RRGGBB both work.
+# Apply edits with /logsstg restart
+colors:
+  info: "#C8C8C8"
+  warn: "#E6B84D"
+  error: "#FF6B6B"
+  # Lines that are not INFO, WARN, or ERROR, and the command line.
+  text: "#D0D0D0"
+  background: "#000000"
